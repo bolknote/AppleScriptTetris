@@ -49,11 +49,8 @@ end
 (* Keyboard *)
 
 on sign(int)
-	if int > 0 then
-		return 1
-	else if int < 0 then
-		return -1
-	end
+	if int > 0 then return 1
+	if int < 0 then return -1
 
 	return 0
 end
@@ -158,37 +155,24 @@ on clearFigure(figure)
 	end
 end
 
-on figureT()
-	return translateFigure([[-1, -1], [0, -1], [1, -1], [0, 0]])
-end
+on randomFigure()
+	-- TIJLOSZ
+	set figures to {¬
+		[[-1, -1], [0, -1], [1, -1], [0, 0]],¬
+		[[0, -3], [0, -2], [0, -1], [0, 0]],¬
+		[[-1, -1], [-1, 0], [0, 0], [1, 0]],¬
+		[[1, -1], [-1, 0], [0, 0], [1, 0]],¬
+		[[-1, -1], [-1, 0], [0, 0], [0, -1]],¬
+		[[-1, 0], [0, 0], [0, -1], [1, -1]],¬
+		[[-1, -1], [0, 0], [0, -1], [1, 0]]¬
+	}
 
-on figureI()
-	return translateFigure([[0, -3], [0, -2], [0, -1], [0, 0]])
-end
-
-on figureJ()
-	return translateFigure([[-1, -1], [-1, 0], [0, 0], [1, 0]])
-end
-
-on figureL()
-	return translateFigure([[1, -1], [-1, 0], [0, 0], [1, 0]])
-end
-
-on figureO()
-	return translateFigure([[-1, -1], [-1, 0], [0, 0], [0, -1]])
-end
-
-on figureS()
-	return translateFigure([[-1, 0], [0, 0], [0, -1], [1, -1]])
-end
-
-on figureZ()
-	return translateFigure([[-1, -1	], [0, 0], [0, -1], [1, 0]])
+	return translateFigure(some item of figures)
 end
 
 (* Main *)
 
-set figure to initFigure(figureZ())
+set figure to initFigure(randomFigure())
 repeat
 	delay GAMEDELAY
 
