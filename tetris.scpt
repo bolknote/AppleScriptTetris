@@ -104,9 +104,9 @@ on newGlass(width, height, sx, sy, blockSize)
 		end
 
 		on drawBorder()
-			set r to blockSize div 1.4
-
 			repeat with step from 0 to height - 1
+				set r to blockSize div (1.2 + (step mod 2) / 5)
+
 				set y to sy + step * blockSize
 
 				newBlock(r, sx - blockSize, y)
@@ -116,6 +116,8 @@ on newGlass(width, height, sx, sy, blockSize)
 			set y to sy + height * blockSize
 
 			repeat with step from -1 to width
+				set r to blockSize div (1.2 + (step mod 2) / 5)
+
 				newBlock(r, sx + step * blockSize, y)
 			end
 		end
