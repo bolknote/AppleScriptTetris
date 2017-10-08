@@ -1,7 +1,7 @@
 #!/usr/bin/osascript
 
 (* Init and common *)
-on newTetris()
+on Tetris()
 	-- Get screen dimension
 	tell application "Finder"
 		set screenResolution to bounds of window of desktop
@@ -24,10 +24,7 @@ on newTetris()
 		property glassWidth: 10
 		property glassHeight: 20
 		property gameDelay: 1
-
-		on init()
-			levelReset()
-		end
+		property glass: {}
 
 		on levelReset()
 			set volume output volume volumeMiddle
@@ -36,26 +33,90 @@ on newTetris()
 		on checkDirection()
 			set level to output volume of (get volume settings)
 			levelReset()
-			return _sign(level - volumeMiddle)
+			_sign(level - volumeMiddle)
 		end
 
 		on _sign(int)
 			if int > 0 then return 1
 			if int < 0 then return -1
 
-			return 0
+			0
 		end
 
-		set figure to newFigure(me, screenCenter, 0)
+		set my glass to newGlass(¬
+			glassWidth,¬
+			glassHeight,¬
+			screenCenter - (glassWidth div 2) * blockSize,¬
+			minimalY,¬
+			blockSize¬
+		)
+
+		tell glass to drawBorder()
+
+		levelReset()
 
 		repeat
-			delay GAMEDELAY
-			set sx to checkDirection()
+			set figure to newFigure(me, screenCenter, minimalY)
+			tell Figure to move(0, 0)
 
-			if figure's check(sx, 1, me) then
-				tell figure to move(sx, 1)
-			else
-				return
+			repeat
+				delay GAMEDELAY
+				set sx to checkDirection()
+
+				if figure's check(sx, 1, me) then
+					tell figure to move(sx, 1)
+				else
+					tell glass to place(figure's getVisibleBlocks())
+					exit repeat
+				end
+			end
+		end
+	end
+end
+
+(* Glass *)
+on newGlass(width, height, sx, sy, blockSize)
+	set blank to {}
+	repeat height times
+		set row to {}
+		repeat width times
+			set row to row & {false}
+		end
+
+		set blank to blank & {row}
+	end
+
+	script Glass
+		property content: blank
+
+		on toGlassX(rx)
+			return 1 + (rx - sx) div blockSize
+		end
+
+		on toGlassY(ry)
+			return 1 + (ry - sy) div blockSize
+		end
+
+		on place(figure)
+			repeat with fi in figure
+				set item toGlassX(x of fi) of item toGlassY(y of fi) of my content to v of fi
+			end
+		end
+
+		on drawBorder()
+			set half to width div 2 + 1
+
+			repeat with step from 0 to height by 2
+				set y to sy + step * blockSize
+
+				newBlock(blockSize, sx - blockSize, y)
+				newBlock(blockSize, sx + (width + 1) * blockSize, y)
+			end
+
+			set y to sy + (height + 2) * blockSize
+
+			repeat with step from -1 to width + 1 by 2
+				newBlock(blockSize, sx + step * blockSize, y)
 			end
 		end
 	end
@@ -89,7 +150,7 @@ on newBlock(blockSize, x, y)
 
 	tell Block to move(x, y)
 
-	return Block
+	Block
 end
 
 (* Figures *)
@@ -109,8 +170,10 @@ on newFigure(tetris, x, y)
 	set blockSize to blockSize of tetris
 	set minimalY to minimalY of tetris
 
-	set minx to screenCenter of tetris - glassWidth of tetris * blockSize
-	set maxx to screenCenter of tetris + glassWidth of tetris * blockSize
+	set half to (glassWidth of tetris div 2) * blockSize
+
+	set minx to screenCenter of tetris - half
+	set maxx to screenCenter of tetris + half
 	set maxy to glassHeight of tetris * blockSize + minimalY
 
 	set tetris to null
@@ -119,26 +182,26 @@ on newFigure(tetris, x, y)
 	set res to {}
 
 	repeat with ith from 1 to length of fig
-		set cell to fig's item ith
-		set cell to {{¬
-			x: (cell's item 1) * blocksize + x,¬
-			y: (cell's item 2) * blocksize + y,¬
+		set {cx, cy} to fig's item ith
+		set block to {{¬
+			x: cx * blockSize + x,¬
+			y: cy * blockSize + y,¬
 			v: false¬
 		}}
 
-		set res to res & cell
+		set res to res & block
 	end
 
 	script Figure
 		property figure: res
-		on move(sx, sy)
+		on move(dx, dy)
 			repeat with fi in figure
-				set nx to x of fi + sx * blockSize
-				set ny to y of fi + sy * blockSize
+				set nx to x of fi + dx * blockSize
+				set ny to y of fi + dy * blockSize
 
 				if ny ≥ minimalY then
 					if v of fi is false then
-						set v of fi to newBlock(blocksize, nx, ny)
+						set v of fi to newBlock(blockSize, nx, ny)
 					else
 						tell v of fi to move(nx, ny)
 					end
@@ -157,25 +220,33 @@ on newFigure(tetris, x, y)
 			end
 		end
 
-		on check(sx, sy)
+		on check(dx, dy)
 			repeat with fi in figure
 				if v of fi is not false then
-					set nx to x of fi + sx * blockSize
-					set ny to y of fi + sy * blockSize
+					set nx to x of fi + dx * blockSize
+					set ny to y of fi + dy * blockSize
 
-					if nx ≤ minx or nx ≥ maxx or ny ≤ minimalY or ny ≥ maxy then
+					if nx < minx or nx > maxx or ny < minimalY or ny > maxy then
 						return false
 					end
 				end
 			end
 
-			return true
+			true
+		end
+
+		on getVisibleBlocks()
+			set res to {}
+
+			repeat with fi in figure
+				if v of fi is not false then
+					set res to res & {fi}
+				end
+			end
+
+			res
 		end
 	end
-
-	tell Figure to move(0, 0)
-
-	return Figure
 end
 
-tell newTetris() to run
+tell Tetris() to run
