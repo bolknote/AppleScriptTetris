@@ -56,7 +56,7 @@ on Tetris()
 		levelReset()
 
 		repeat
-			set figure to newFigure(me, screenCenter, minimalY)
+			set figure to newFigure(me, screenCenter - blockSize, minimalY)
 			tell Figure to move(0, 0)
 
 			repeat
@@ -104,19 +104,19 @@ on newGlass(width, height, sx, sy, blockSize)
 		end
 
 		on drawBorder()
-			set half to width div 2 + 1
+			set r to blockSize div 1.4
 
-			repeat with step from 0 to height by 2
+			repeat with step from 0 to height - 1
 				set y to sy + step * blockSize
 
-				newBlock(blockSize, sx - blockSize, y)
-				newBlock(blockSize, sx + (width + 1) * blockSize, y)
+				newBlock(r, sx - blockSize, y)
+				newBlock(r, sx + width * blockSize, y)
 			end
 
-			set y to sy + (height + 2) * blockSize
+			set y to sy + height * blockSize
 
-			repeat with step from -1 to width + 1 by 2
-				newBlock(blockSize, sx + step * blockSize, y)
+			repeat with step from -1 to width
+				newBlock(r, sx + step * blockSize, y)
 			end
 		end
 	end
@@ -173,8 +173,8 @@ on newFigure(tetris, x, y)
 	set half to (glassWidth of tetris div 2) * blockSize
 
 	set minx to screenCenter of tetris - half
-	set maxx to screenCenter of tetris + half
-	set maxy to glassHeight of tetris * blockSize + minimalY
+	set maxx to screenCenter of tetris + half - blockSize
+	set maxy to (glassHeight of tetris - 1) * blockSize + minimalY
 
 	set tetris to null
 
