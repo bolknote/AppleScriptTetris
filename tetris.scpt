@@ -63,9 +63,13 @@ on Tetris()
 				delay GAMEDELAY
 				set sx to checkDirection()
 
-				if figure's check(sx, 1, me) then
+				set obj to figure's check(sx, 1, me)
+
+				if obj is "space" then
 					tell figure to move(sx, 1)
-				else
+				else if obj is "wall" then
+					tell figure to move(0, 1)
+				else if obj is "bottom" then
 					tell glass to place(figure's getVisibleBlocks())
 					exit repeat
 				end
@@ -228,13 +232,17 @@ on newFigure(tetris, x, y)
 					set nx to x of fi + dx * blockSize
 					set ny to y of fi + dy * blockSize
 
-					if nx < minx or nx > maxx or ny < minimalY or ny > maxy then
-						return false
+					if nx < minx or nx > maxx then
+						return "wall"
+					end
+
+					if ny < minimalY or ny > maxy then
+						return "bottom"
 					end
 				end
 			end
 
-			true
+			"space"
 		end
 
 		on getVisibleBlocks()
