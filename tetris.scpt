@@ -63,13 +63,13 @@ on Tetris()
 				delay GAMEDELAY
 				set sx to checkDirection()
 
-				set obj to figure's check(sx, 1, me)
+				set obj to figure's check(sx, 1, glass)
 
 				if obj is "space" then
 					tell figure to move(sx, 1)
 				else if obj is "wall" then
 					tell figure to move(0, 1)
-				else if obj is "bottom" then
+				else if {"bottom", "block"} contains obj then
 					tell glass to place(figure's getVisibleBlocks())
 					exit repeat
 				end
@@ -124,6 +124,11 @@ on newGlass(width, height, sx, sy, blockSize)
 
 				newBlock(r, sx + step * blockSize, y)
 			end
+		end
+
+		on isOccupied(x, y)
+			set cell to item toGlassX(x) of item toGlassY(y) of content
+			return cell is not false
 		end
 	end
 end
@@ -226,7 +231,7 @@ on newFigure(tetris, x, y)
 			end
 		end
 
-		on check(dx, dy)
+		on check(dx, dy, glass)
 			repeat with fi in figure
 				if v of fi is not false then
 					set nx to x of fi + dx * blockSize
@@ -238,6 +243,10 @@ on newFigure(tetris, x, y)
 
 					if ny < minimalY or ny > maxy then
 						return "bottom"
+					end
+
+					if glass's isOccupied(nx, ny) then
+						return "block"
 					end
 				end
 			end
