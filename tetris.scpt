@@ -16,11 +16,6 @@ on Tetris()
 		close 1st window
 	end
 
-	-- Init TextEdit
-	tell application "TextEdit"
-		activate
-	end
-
 	script Tetris
 		property blockSize: 10
 		property volumeMiddle: 50
