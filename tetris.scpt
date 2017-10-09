@@ -16,6 +16,11 @@ on Tetris()
 		close 1st window
 	end
 
+	-- Init TextEdit
+	tell application "TextEdit"
+		activate
+	end
+
 	script Tetris
 		property blockSize: 10
 		property volumeMiddle: 50
@@ -75,6 +80,11 @@ on Tetris()
 					if obj is "block" and figure's check(0, 1, glass) is "space" then
 						tell figure to move(0, 1)
 					else
+						if obj is "block" and not moved of figure then
+							-- Game over
+							return
+						end
+
 						tell glass to place(figure's getVisibleBlocks())
 
 						set |line| to glass's detectLines()
@@ -210,7 +220,6 @@ end
 
 on newBlock(blockSize, x, y)
 	tell application "TextEdit"
-		activate
 		make new document at the front
 		set |id| to id of front window
 	end
@@ -290,6 +299,8 @@ on newFigure(tetris, x, y, figNum)
 
 	script Figure
 		property figure: res
+		property moved: false
+
 		on move(dx, dy)
 			repeat with fi in figure
 				set nx to x of fi + dx * blockSize
@@ -305,6 +316,10 @@ on newFigure(tetris, x, y, figNum)
 
 				set x of fi to nx
 				set y of fi to ny
+			end
+
+			if dx ≠ 0 or dy ≠ 0 then
+				set my moved to true
 			end
 		end
 
