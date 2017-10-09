@@ -7,3 +7,7 @@ Controls
  * Mute button — rotate
  * Volume down — move left
  * Volume right — move right
+
+Limitations
+===========
+Creates a lot TextEdit's windows and don't clean it after end.
