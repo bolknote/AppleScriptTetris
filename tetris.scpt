@@ -32,13 +32,17 @@ on Tetris()
 		property glass: {}
 
 		on levelReset()
-			set volume output volume volumeMiddle
+			set volume output volume volumeMiddle without muted
 		end
 
 		on checkDirection()
 			set level to output volume of (get volume settings)
 			levelReset()
 			_sign(level - volumeMiddle)
+		end
+
+		on checkRotate()
+			return output muted of (get volume settings)
 		end
 
 		on _sign(int)
@@ -68,6 +72,11 @@ on Tetris()
 
 			repeat
 				delay GAMEDELAY
+
+				if checkRotate() then
+					log "Rotation is not implemented yet"
+				end
+
 				set sx to checkDirection()
 
 				set obj to figure's check(sx, 1, glass)
