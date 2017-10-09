@@ -72,16 +72,20 @@ on Tetris()
 				else if obj is "wall" then
 					tell figure to move(0, 1)
 				else if {"bottom", "block"} contains obj then
-					tell glass to place(figure's getVisibleBlocks())
+					if obj is "block" and figure's check(0, 1, glass) is "space" then
+						tell figure to move(0, 1)
+					else
+						tell glass to place(figure's getVisibleBlocks())
 
-					set |line| to glass's detectLines()
-
-					repeat until |line| is false
-						glass's collapseLine(|line|)
 						set |line| to glass's detectLines()
-					end
 
-					exit repeat
+						repeat until |line| is false
+							glass's collapseLine(|line|)
+							set |line| to glass's detectLines()
+						end
+
+						exit repeat
+					end
 				end
 			end
 		end
