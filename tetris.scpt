@@ -23,7 +23,7 @@ on Tetris()
 		property minimalY: coords's item 2
 		property glassWidth: 10
 		property glassHeight: 20
-		property gameDelay: 1
+		property gameDelay: .3
 		property glass: {}
 
 		on levelReset()
@@ -55,9 +55,11 @@ on Tetris()
 
 		levelReset()
 
+		set startX to screenCenter - blockSize
+
 		repeat
-			set figure to newFigure(me, screenCenter - blockSize, minimalY)
-			tell Figure to move(0, 0)
+			set figure to newFigure(me, startX, minimalY, null)
+			tell figure to move(0, 0)
 
 			repeat
 				delay GAMEDELAY
@@ -71,6 +73,14 @@ on Tetris()
 					tell figure to move(0, 1)
 				else if {"bottom", "block"} contains obj then
 					tell glass to place(figure's getVisibleBlocks())
+
+					set |line| to glass's detectLines()
+
+					repeat until |line| is false
+						glass's collapseLine(|line|)
+						set |line| to glass's detectLines()
+					end
+
 					exit repeat
 				end
 			end
@@ -82,12 +92,12 @@ end
 on newGlass(width, height, sx, sy, blockSize)
 	set blank to {}
 	repeat height times
-		set row to {}
+		set blankRow to {}
 		repeat width times
-			set row to row & {false}
+			set blankRow to blankRow & {false}
 		end
 
-		set blank to blank & {row}
+		set blank to blank & {blankRow}
 	end
 
 	script Glass
@@ -130,6 +140,65 @@ on newGlass(width, height, sx, sy, blockSize)
 			set cell to item toGlassX(x) of item toGlassY(y) of content
 			return cell is not false
 		end
+
+		on detectLines()
+			repeat with nth from 1 to length of content
+				if false is not in item nth of content then
+					return nth
+				end
+			end
+
+			false
+		end
+
+		on collapseLine(ith)
+			repeat with idx from ith - 1 to 1 by -1
+				repeat with blk in content's item idx
+					if contents of blk is not false then
+						tell blk to moveDown()
+					end
+				end
+			end
+
+			repeat with blk in content's item ith
+				if contents of blk is not false then
+					tell blk to destroy()
+				end
+			end
+
+			set blankRow to {}
+			repeat width times
+				copy false to end of blankRow
+			end
+
+			if ith is 1 then
+				set newcontent to {blankRow}
+			else
+				set newcontent to {blankRow} & items 1 thru (ith - 1) of content
+			end
+
+			if ith is not length of content then
+				set newcontent to newcontent & items (ith + 1) thru end of content
+			end
+
+			copy newcontent to my content
+		end
+
+		on debug()
+			log ""
+			repeat with |line| in content
+				set out to {}
+				repeat with blk in |line|
+					if contents of blk is false then
+						copy "_____" to end of out
+					else
+						copy text -5 thru -1 of ("00000" & wid of blk) to end of out
+					end
+				end
+
+				log out
+			end
+		end
 	end
 end
 
@@ -153,9 +222,16 @@ on newBlock(blockSize, x, y)
 
 		on move(x, y)
 			tell application "TextEdit"
-				set the index of 1st window whose id is wid to 1
-				set the bounds of 1st window to {x, y, (x + blockSize), (y + blockSize)}
+				set the bounds of 1st window whose id is wid to {x, y, (x + blockSize), (y + blockSize)}
 			end
+		end
+
+		on moveDown()
+			tell application "TextEdit"
+				set {x, y} to (get bounds of 1st window whose id is wid)
+			end
+
+			move(x, y + blockSize)
 		end
 	end
 
@@ -166,7 +242,7 @@ end
 
 (* Figures *)
 
-on newFigure(tetris, x, y)
+on newFigure(tetris, x, y, figNum)
 	-- TIJLOSZ
 	set figures to {¬
 		[[-1, -1], [0, -1], [1, -1], [0, 0]],¬
@@ -189,7 +265,12 @@ on newFigure(tetris, x, y)
 
 	set tetris to null
 
-	set fig to some item of figures
+	if figNum is null then
+		set fig to some item of figures
+	else
+		set fit to item figNum of figures
+	end
+
 	set res to {}
 
 	repeat with ith from 1 to length of fig
