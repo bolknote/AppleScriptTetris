@@ -63,13 +63,13 @@ on Tetris()
 
 		repeat
 			set figure to newFigure(me, startX, minimalY, null)
-			tell figure to move(0, 0)
+			tell figure to init()
 
 			repeat
 				delay GAMEDELAY
 
 				if checkRotate() then
-					log "Rotation is not implemented yet"
+					tell figure to rotate()
 				end
 
 				set sx to checkDirection()
@@ -260,15 +260,14 @@ end
 (* Figures *)
 
 on newFigure(tetris, x, y, figNum)
-	-- TIJLOSZ
 	set figures to {¬
-		[[-1, -1], [0, -1], [1, -1], [0, 0]],¬
-		[[0, -3], [0, -2], [0, -1], [0, 0]],¬
-		[[-1, -1], [-1, 0], [0, 0], [1, 0]],¬
-		[[1, -1], [-1, 0], [0, 0], [1, 0]],¬
-		[[-1, -1], [-1, 0], [0, 0], [0, -1]],¬
-		[[-1, 0], [0, 0], [0, -1], [1, -1]],¬
-		[[-1, -1], [0, 0], [0, -1], [1, 0]]¬
+		["T", [-1, -1], [0, -1], [1, -1], [0, 0]],¬
+		["I", [0, -3], [0, -2], [0, -1], [0, 0]],¬
+		["J", [-1, -1], [-1, 0], [0, 0], [1, 0]],¬
+		["L", [1, -1], [-1, 0], [0, 0], [1, 0]],¬
+		["O", [-1, -1], [-1, 0], [0, 0], [0, -1]],¬
+		["S", [-1, 0], [0, 0], [0, -1], [1, -1]],¬
+		["Z", [-1, -1], [0, 0], [0, -1], [1, 0]]¬
 	}
 
 	set blockSize to blockSize of tetris
@@ -282,28 +281,77 @@ on newFigure(tetris, x, y, figNum)
 
 	set tetris to null
 
-	if figNum is null then
-		set fig to some item of figures
-	else
-		set fit to item figNum of figures
-	end
-
-	set res to {}
-
-	repeat with ith from 1 to length of fig
-		set {cx, cy} to fig's item ith
-		set block to {{¬
-			x: cx * blockSize + x,¬
-			y: cy * blockSize + y,¬
-			v: false¬
-		}}
-
-		set res to res & block
-	end
-
 	script Figure
-		property figure: res
+		property figure: {}
+		property raw: {}
 		property moved: false
+		property type: null
+		property degree: 0
+
+		on init()
+			move(0, 0)
+
+			if figNum is null then
+				set fig to some item of figures
+			else
+				set fig to item figNum of figures
+			end
+
+			set my raw to items 2 thru 5 of fig
+			set my figure to translate(raw, x, y)
+			set my type to first item of fig
+		end
+
+		on translate(fig, x, y)
+			set res to {}
+
+			repeat with |item| in fig
+				set {cx, cy} to |item|
+				set {cx, cy} to rotateOne(cx, cy)
+
+				set block to {{¬
+					x: cx * blockSize + x,¬
+					y: cy * blockSize + y,¬
+					v: false¬
+				}}
+
+				set res to res & block
+			end
+		end
+
+		on rotateOne(x, y)
+			if degree is 0 then return [x, y]
+			if degree is 90 then return [-y, x]
+			if degree is 180 then return [-x, -y]
+
+			[y, -x]
+		end
+
+		on rotate()
+			if type is "O" then return
+
+			if degree is less than 270 then
+				set my degree to degree + 90
+			else
+				set my degree to 0
+			end
+
+			repeat with nth from 1 to 4
+				if item nth of raw is [0, 0] then
+					set {x, y} to item nth of figure as list
+					exit repeat
+				end
+			end
+
+			copy figure to oldfigure
+			set my figure to translate(raw, x, y)
+
+			repeat with nth from 1 to length of oldfigure
+				set v of item nth of figure to v of item nth of oldfigure
+			end
+
+			move(0, 0)
+		end
 
 		on move(dx, dy)
 			repeat with fi in figure
