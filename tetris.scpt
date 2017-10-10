@@ -1,11 +1,21 @@
 #!/usr/bin/osascript
 
+property blockSize: 10
+property minimalY: null
+property screenCenter: null
+property glassWidth: 10
+property glassHeight: 20
+property gameDelay: .3
+property volumeMiddle: 50
+
 (* Init and common *)
 on Tetris()
 	-- Get screen dimension
 	tell application "Finder"
 		set screenResolution to bounds of window of desktop
 	end
+
+	set screenCenter to screenResolution's item 3 div 2
 
 	-- Get height of menu bar
 	tell application "TextEdit"
@@ -16,14 +26,9 @@ on Tetris()
 		close 1st window
 	end
 
+	set minimalY to coords's item 2
+
 	script Tetris
-		property blockSize: 10
-		property volumeMiddle: 50
-		property screenCenter: screenResolution's item 3 div 2
-		property minimalY: coords's item 2
-		property glassWidth: 10
-		property glassHeight: 20
-		property gameDelay: .3
 		property glass: {}
 
 		on levelReset()
@@ -51,8 +56,7 @@ on Tetris()
 			glassWidth,¬
 			glassHeight,¬
 			screenCenter - (glassWidth div 2) * blockSize,¬
-			minimalY,¬
-			blockSize¬
+			minimalY¬
 		)
 
 		tell glass to drawBorder()
@@ -62,7 +66,7 @@ on Tetris()
 		set startX to screenCenter - blockSize
 
 		repeat
-			set figure to newFigure(me, startX, minimalY, null)
+			set figure to newFigure(startX, minimalY, null)
 			tell figure to init()
 
 			repeat
@@ -77,12 +81,12 @@ on Tetris()
 				set obj to figure's check(sx, 1, glass)
 
 				if obj is "space" then
-					tell figure to move(sx, 1)
+					tell figure to moveBy(sx, 1)
 				else if obj is "wall" then
-					tell figure to move(0, 1)
+					tell figure to moveBy(0, 1)
 				else if {"bottom", "block"} contains obj then
 					if obj is "block" and figure's check(0, 1, glass) is "space" then
-						tell figure to move(0, 1)
+						tell figure to moveBy(0, 1)
 					else
 						if obj is "block" and not moved of figure then
 							-- Game over
@@ -107,7 +111,7 @@ on Tetris()
 end
 
 (* Glass *)
-on newGlass(width, height, sx, sy, blockSize)
+on newGlass(width, height, sx, sy)
 	set blank to {}
 	repeat height times
 		set blankRow to {}
@@ -130,8 +134,8 @@ on newGlass(width, height, sx, sy, blockSize)
 		end
 
 		on place(figure)
-			repeat with fi in figure
-				set item toGlassX(x of fi) of item toGlassY(y of fi) of my content to v of fi
+			repeat with blk in figure
+				set item toGlassX(rx of blk) of item toGlassY(ry of blk) of my content to blk
 			end
 		end
 
@@ -141,8 +145,8 @@ on newGlass(width, height, sx, sy, blockSize)
 
 				set y to sy + step * blockSize
 
-				newBlock(r, sx - blockSize, y)
-				newBlock(r, sx + width * blockSize, y)
+				newBlock(sx - blockSize, y, r)
+				newBlock(sx + width * blockSize, y, r)
 			end
 
 			set y to sy + height * blockSize
@@ -150,7 +154,7 @@ on newGlass(width, height, sx, sy, blockSize)
 			repeat with step from -1 to width
 				set r to blockSize div (1.2 + (step mod 2) / 5)
 
-				newBlock(r, sx + step * blockSize, y)
+				newBlock(sx + step * blockSize, y, r)
 			end
 		end
 
@@ -173,7 +177,7 @@ on newGlass(width, height, sx, sy, blockSize)
 			repeat with idx from ith - 1 to 1 by -1
 				repeat with blk in content's item idx
 					if contents of blk is not false then
-						tell blk to moveDown()
+						tell blk to moveByBlock(0, 1)
 					end
 				end
 			end
@@ -222,44 +226,56 @@ end
 
 (* Block *)
 
-on newBlock(blockSize, x, y)
-	tell application "TextEdit"
-		make new document at the front
-		set |id| to id of front window
-	end
-
+on newBlock(x, y, |size|)
 	script Block
-		property wid: |id|
+		property wid: null
+		property visible: false
+		property rx: x
+		property ry: y
+
+		on create()
+			tell application "TextEdit"
+				make new document at the front
+				set my wid to id of front window
+			end
+
+			set my visible to true
+		end
 
 		on destroy()
-			tell application "TextEdit"
-				close 1st window whose id is wid
+			if wid isn't null then
+				tell application "TextEdit"
+					close 1st window whose id is wid
+				end
 			end
 		end
 
-		on move(x, y)
-			tell application "TextEdit"
-				set the bounds of 1st window whose id is wid to {x, y, (x + blockSize), (y + blockSize)}
+		on moveTo(x, y)
+			if y ≥ minimalY then
+				if wid is null then create()
+
+				tell application "TextEdit"
+					set the bounds of 1st window whose id is wid to {x, y, (x + |size|), (y + |size|)}
+				end
 			end
+
+			set my rx to x
+			set my ry to y
 		end
 
-		on moveDown()
-			tell application "TextEdit"
-				set {x, y} to (get bounds of 1st window whose id is wid)
-			end
-
-			move(x, y + blockSize)
+		on moveByBlock(dx, dy)
+			moveTo(rx + dx * |size|, ry + dy * |size|)
 		end
 	end
 
-	tell Block to move(x, y)
+	tell Block to moveTo(x, y)
 
 	Block
 end
 
 (* Figures *)
 
-on newFigure(tetris, x, y, figNum)
+on newFigure(x, y, figNum)
 	set figures to {¬
 		["T", [-1, -1], [0, -1], [1, -1], [0, 0]],¬
 		["I", [0, -3], [0, -2], [0, -1], [0, 0]],¬
@@ -270,14 +286,11 @@ on newFigure(tetris, x, y, figNum)
 		["Z", [-1, -1], [0, 0], [0, -1], [1, 0]]¬
 	}
 
-	set blockSize to blockSize of tetris
-	set minimalY to minimalY of tetris
+	set half to (glassWidth div 2) * blockSize
 
-	set half to (glassWidth of tetris div 2) * blockSize
-
-	set minx to screenCenter of tetris - half
-	set maxx to screenCenter of tetris + half - blockSize
-	set maxy to (glassHeight of tetris - 1) * blockSize + minimalY
+	set minx to screenCenter - half
+	set maxx to screenCenter + half - blockSize
+	set maxy to (glassHeight - 1) * blockSize + minimalY
 
 	set tetris to null
 
@@ -289,8 +302,6 @@ on newFigure(tetris, x, y, figNum)
 		property degree: 0
 
 		on init()
-			move(0, 0)
-
 			if figNum is null then
 				set fig to some item of figures
 			else
@@ -298,25 +309,25 @@ on newFigure(tetris, x, y, figNum)
 			end
 
 			set my raw to items 2 thru 5 of fig
-			set my figure to translate(raw, x, y)
 			set my type to first item of fig
+
+			repeat with |item| in translate(raw, x, y)
+				set [rx, ry] to |item|
+				set my figure to figure & newBlock(rx, ry, blockSize)
+			end
 		end
 
 		on translate(fig, x, y)
 			set res to {}
 
 			repeat with |item| in fig
-				set {cx, cy} to |item|
-				set {cx, cy} to rotateOne(cx, cy)
+				set [cx, cy] to |item|
+				set [cx, cy] to rotateOne(cx, cy)
 
-				set block to {{¬
-					x: cx * blockSize + x,¬
-					y: cy * blockSize + y,¬
-					v: false¬
-				}}
-
-				set res to res & block
+				set end of res to [cx * blockSize + x, cy * blockSize + y]
 			end
+
+			res
 		end
 
 		on rotateOne(x, y)
@@ -338,56 +349,43 @@ on newFigure(tetris, x, y, figNum)
 
 			repeat with nth from 1 to 4
 				if item nth of raw is [0, 0] then
-					set {x, y} to item nth of figure as list
+					set blk to item nth of figure
+					set x to rx of blk
+					set y to ry of blk
+
 					exit repeat
 				end
 			end
 
-			copy figure to oldfigure
-			set my figure to translate(raw, x, y)
+			set coords to translate(raw, x, y)
+			repeat with nth from 1 to length of figure
+				set [rx, ry] to item nth of coords
 
-			repeat with nth from 1 to length of oldfigure
-				set v of item nth of figure to v of item nth of oldfigure
+				(item nth of figure)'s moveTo(rx, ry)
 			end
-
-			move(0, 0)
 		end
 
-		on move(dx, dy)
-			repeat with fi in figure
-				set nx to x of fi + dx * blockSize
-				set ny to y of fi + dy * blockSize
-
-				if ny ≥ minimalY then
-					if v of fi is false then
-						set v of fi to newBlock(blockSize, nx, ny)
-					else
-						tell v of fi to move(nx, ny)
-					end
+		on moveBy(dx, dy)
+			if dx ≠ 0 or dy ≠ 0 then
+				repeat with blk in figure
+					tell blk to moveByBlock(dx, dy)
 				end
 
-				set x of fi to nx
-				set y of fi to ny
-			end
-
-			if dx ≠ 0 or dy ≠ 0 then
 				set my moved to true
 			end
 		end
 
 		on destroy()
-			repeat with fi in figure
-				if v of fi is not false then
-					tell v of fi to destroy()
-				end
+			repeat with blk in figure
+				tell blk to destroy()
 			end
 		end
 
 		on check(dx, dy, glass)
-			repeat with fi in figure
-				if v of fi is not false then
-					set nx to x of fi + dx * blockSize
-					set ny to y of fi + dy * blockSize
+			repeat with blk in figure
+				if visible of blk then
+					set nx to (rx of blk) + dx * blockSize
+					set ny to (ry of blk) + dy * blockSize
 
 					if nx < minx or nx > maxx then
 						return "wall"
@@ -409,9 +407,9 @@ on newFigure(tetris, x, y, figNum)
 		on getVisibleBlocks()
 			set res to {}
 
-			repeat with fi in figure
-				if v of fi is not false then
-					set res to res & {fi}
+			repeat with blk in figure
+				if visible of blk then
+					set res to res & blk
 				end
 			end
 
